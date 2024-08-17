@@ -5,8 +5,10 @@ const productRoutes = require("./routes/productRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 // const orderRoutes = require("./routes/orderRoutes"); // (If you need specific routes for orders)
 require("dotenv").config();
+const cors = require("cors");
 
 const app = express();
+app.use(cors());
 
 // Connect to the database
 connectDB();

@@ -33,3 +33,32 @@ exports.loginUser = async (req, res) => {
 exports.logoutUser = (req, res) => {
   res.json({ message: "User logged out" });
 };
+
+// POST /api/auth/register - Register a new user
+exports.createUser = async (req, res) => {
+  const { email, password, role } = req.body;
+
+  try {
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ msg: "Please enter all fields" });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ msg: "User already exists" });
+    }
+
+    // Create a new user
+    const newUser = new User({ email, password, role });
+    await newUser.save();
+
+    res
+      .status(201)
+      .json({ msg: "User registered successfully", user: newUser });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
+  }
+};

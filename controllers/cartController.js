@@ -44,7 +44,7 @@ exports.getCart = async (req, res) => {
       "title description price image"
     );
     if (!cart) {
-      return res.status(404).json({ msg: "Cart not found" });
+      return res.status(200).json({ items: [] });
     }
     res.json(cart);
   } catch (err) {
