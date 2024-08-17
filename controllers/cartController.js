@@ -1,7 +1,6 @@
 const Cart = require("../models/Cart");
 const Product = require("../models/Product");
 const Order = require("../models/Order"); // New Order model we'll create
-const { check, validationResult } = require("express-validator");
 
 exports.addToCart = async (req, res) => {
   const { productId, quantity } = req.body;
@@ -90,6 +89,53 @@ exports.checkoutCart = async (req, res) => {
     await cart.save();
 
     res.json({ msg: "Checkout successful", order });
+  } catch (err) {
+    res.status(500).json({ msg: "Server error", err });
+  }
+};
+
+exports.updateCartItem = async (req, res) => {
+  const { productId, quantity } = req.body;
+  const userId = req.user.userId;
+
+  try {
+    let cart = await Cart.findOne({ user: userId });
+
+    if (!cart) {
+      return res.status(404).json({ msg: "Cart not found" });
+    }
+
+    const item = cart.items.find(
+      (item) => item.product.toString() === productId
+    );
+    if (item) {
+      item.quantity = quantity;
+      await cart.save();
+      res.json({ msg: "Cart updated", cart });
+    } else {
+      res.status(404).json({ msg: "Product not found in cart" });
+    }
+  } catch (err) {
+    res.status(500).json({ msg: "Server error", err });
+  }
+};
+
+exports.removeCartItem = async (req, res) => {
+  const { productId } = req.body;
+  const userId = req.user.userId;
+
+  try {
+    let cart = await Cart.findOne({ user: userId });
+
+    if (!cart) {
+      return res.status(404).json({ msg: "Cart not found" });
+    }
+
+    cart.items = cart.items.filter(
+      (item) => item.product.toString() !== productId
+    );
+    await cart.save();
+    res.json({ msg: "Product removed from cart", cart });
   } catch (err) {
     res.status(500).json({ msg: "Server error", err });
   }
