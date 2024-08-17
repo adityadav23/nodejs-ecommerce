@@ -1,5 +1,7 @@
 const Cart = require("../models/Cart");
 const Product = require("../models/Product");
+const Order = require("../models/Order"); // New Order model we'll create
+const { check, validationResult } = require("express-validator");
 
 exports.addToCart = async (req, res) => {
   const { productId, quantity } = req.body;
@@ -51,48 +53,43 @@ exports.getCart = async (req, res) => {
   }
 };
 
-exports.updateCartItem = async (req, res) => {
-  const { productId, quantity } = req.body;
+exports.checkoutCart = async (req, res) => {
   const userId = req.user.userId;
+  const { shippingAddress } = req.body;
 
   try {
-    let cart = await Cart.findOne({ user: userId });
-
-    if (!cart) {
-      return res.status(404).json({ msg: "Cart not found" });
-    }
-
-    const item = cart.items.find(
-      (item) => item.product.toString() === productId
+    const cart = await Cart.findOne({ user: userId }).populate(
+      "items.product",
+      "title price"
     );
-    if (item) {
-      item.quantity = quantity;
-      await cart.save();
-      res.json({ msg: "Cart updated", cart });
-    } else {
-      res.status(404).json({ msg: "Product not found in cart" });
-    }
-  } catch (err) {
-    res.status(500).json({ msg: "Server error", err });
-  }
-};
 
-exports.removeCartItem = async (req, res) => {
-  const { productId } = req.body;
-  const userId = req.user.userId;
-
-  try {
-    let cart = await Cart.findOne({ user: userId });
-
-    if (!cart) {
-      return res.status(404).json({ msg: "Cart not found" });
+    if (!cart || cart.items.length === 0) {
+      return res.status(400).json({ msg: "Cart is empty" });
     }
 
-    cart.items = cart.items.filter(
-      (item) => item.product.toString() !== productId
-    );
+    const orderItems = cart.items.map((item) => ({
+      product: item.product._id,
+      quantity: item.quantity,
+      price: item.product.price,
+    }));
+
+    const order = new Order({
+      user: userId,
+      items: orderItems,
+      totalAmount: orderItems.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      ),
+      shippingAddress,
+    });
+
+    await order.save();
+
+    // Clear the cart after checkout
+    cart.items = [];
     await cart.save();
-    res.json({ msg: "Product removed from cart", cart });
+
+    res.json({ msg: "Checkout successful", order });
   } catch (err) {
     res.status(500).json({ msg: "Server error", err });
   }
